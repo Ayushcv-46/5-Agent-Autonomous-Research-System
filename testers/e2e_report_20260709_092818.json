@@ -1,0 +1,17 @@
+[
+  {
+    "topic": "How do vector databases handle approximate nearest neighbor search?",
+    "status": "completed",
+    "duration_sec": 1263.9,
+    "score": 8,
+    "verdict": "PASS",
+    "revision_count": 1,
+    "reader_failed": false,
+    "writer_failed": false,
+    "critic_failed": false,
+    "ragas_scores": null,
+    "num_sources": 2,
+    "final_report_preview": "# Approximate Nearest‑Neighbor Search in Modern Vector Databases: Capabilities, Trade‑offs, and Architectural Integration\n\n## Introduction\nVector databases are the storage and query‑execution layer for AI‑driven applications that rely on high‑dimensional embeddings (text, images, audio, …).  Their p",
+    "error": null
+  }
+]

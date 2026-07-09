@@ -1,0 +1,17 @@
+[
+  {
+    "topic": "How do vector databases handle approximate nearest neighbor search?",
+    "status": "completed",
+    "duration_sec": 649.2,
+    "score": 8,
+    "verdict": "REVISE",
+    "revision_count": 2,
+    "reader_failed": false,
+    "writer_failed": false,
+    "critic_failed": false,
+    "ragas_scores": null,
+    "num_sources": 5,
+    "final_report_preview": "# State‑of‑the‑Art Indexing, Tunable Trade‑offs, and System Integration in Modern Vector Databases\n\n## Introduction\nVector databases enable low‑latency semantic search, recommendation and retrieval‑augmented generation by answering approximate‑nearest‑neighbor (ANN) queries.  This report synthesises",
+    "error": null
+  }
+]

@@ -1,0 +1,17 @@
+[
+  {
+    "topic": "How do vector databases handle approximate nearest neighbor search?",
+    "status": "completed",
+    "duration_sec": 318.9,
+    "score": 7,
+    "verdict": "REVISE",
+    "revision_count": 2,
+    "reader_failed": false,
+    "writer_failed": false,
+    "critic_failed": false,
+    "ragas_scores": null,
+    "num_sources": 4,
+    "final_report_preview": "# Indexing, Parameter Tuning, and Acceleration in Modern Vector Databases – Evidence‑Based Findings\n\n## Introduction\nVector databases have become central to applications that require similarity search over high‑dimensional embeddings (e.g., recommendation, retrieval, and anomaly detection).  Their p",
+    "error": null
+  }
+]
