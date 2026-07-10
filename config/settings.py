@@ -12,7 +12,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8")
 
 MAX_REVISIONS = 2
-MAX_CONTEXT_CHARS = 2000  # cap per retrieved chunk fed to RAGAS
+MAX_CONTEXT_CHARS = 4000  # cap per retrieved chunk fed to RAGAS
 
 os.environ["LANGCHAIN_TRACING_V2"] = os.getenv("LANGCHAIN_TRACING_V2", "true")
 os.environ["LANGCHAIN_PROJECT"] = os.getenv("LANGCHAIN_PROJECT", "AutoResearch")

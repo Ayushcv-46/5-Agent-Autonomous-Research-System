@@ -57,8 +57,8 @@ ragas_judge_llm = ChatOpenAI(
     model="openai/gpt-oss-120b",
     openai_api_key=os.getenv("NVIDIA_API_KEY"),
     openai_api_base="https://integrate.api.nvidia.com/v1",
-    temperature=0, top_p=1, max_tokens=8000,   # temperature=0: judges must be deterministic
-    timeout=60.0, max_retries=1,
+    temperature=0, top_p=1, max_tokens=16000,   # temperature=0: judges must be deterministic
+    timeout=90.0, max_retries=1,
 )
 
 llamaindex_llm = OpenAILike(

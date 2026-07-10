@@ -86,10 +86,15 @@ def run_ragas_evaluation(extracted_points: List[Dict[str, Any]]) -> Optional[Dic
 
     try:
         judge, embeddings = get_ragas_wrappers()
+        metrics = [faithfulness, answer_relevancy, context_precision, context_recall]
+        for m in metrics:
+            if hasattr(m, "reproducibility"):
+                m.reproducibility = 1
+
         print(f"[RAGAS] evaluating {len(rows)} rows x 4 metrics (this takes 1-3 min)...")
         result = ragas_evaluate(
             dataset=dataset,
-            metrics=[faithfulness, answer_relevancy, context_precision, context_recall],
+            metrics=metrics,
             llm=judge,
             embeddings=embeddings,
             raise_exceptions=False,   # a single failed judge call must not kill the run
