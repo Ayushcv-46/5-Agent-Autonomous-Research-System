@@ -2,7 +2,7 @@
 # Reader Agent — extracts grounded answers via LlamaIndex + ChromaDB.
 
 import uuid
-import concurrent.futures
+import asyncio
 
 import chromadb
 from llama_index.core import VectorStoreIndex, StorageContext
@@ -31,21 +31,32 @@ def reader_node(state: AutoResearchState) -> AutoResearchState:
 
     web_reader = SimpleWebPageReader()
     documents = []
-    for url in all_urls:
+
+    async def fetch_url(url: str):
         try:
             print(f"[READER] fetching: {url}")
-            executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-            future = executor.submit(web_reader.load_data, urls=[url])
-            try:
-                documents.extend(future.result(timeout=15))
-            except concurrent.futures.TimeoutError:
-                print(f"[READER][TIMEOUT] {url} took too long, skipping")
-                future.cancel()
-                continue
-            finally:
-                executor.shutdown(wait=False, cancel_futures=True)
+            return await asyncio.wait_for(
+                asyncio.to_thread(web_reader.load_data, urls=[url]),
+                timeout=15
+            )
+        except asyncio.TimeoutError:
+            print(f"[READER][TIMEOUT] {url} took too long, skipping")
+            raise
         except Exception as e:
             print(f"[READER][FAILED] {url} — {e}")
+            raise
+
+    async def run_readers():
+        tasks = [fetch_url(url) for url in all_urls]
+        return await asyncio.gather(*tasks, return_exceptions=True)
+
+    results = asyncio.run(run_readers())
+
+    for res in results:
+        if isinstance(res, Exception):
+            continue
+        elif res is not None:
+            documents.extend(res)
 
     if not documents:
         new_state = dict(state)
