@@ -75,12 +75,14 @@ Settings.llm = llamaindex_llm
 # EMBEDDING MODEL (offline → online fallback)
 # ==========================================
 
-os.environ["HF_HUB_OFFLINE"] = "1"
-os.environ["TRANSFORMERS_OFFLINE"] = "1"
 try:
-    Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5")
-except Exception:
-    print("[WARNING] HF embedding model not cached locally; retrying online.")
+    Settings.embed_model = HuggingFaceEmbedding(
+        model_name="BAAI/bge-small-en-v1.5",
+        model_kwargs={"local_files_only": True}
+    )
+except Exception as e:
+    print(f"[WARNING] Local HF embedding load failed ({e}); retrying standard load.")
     os.environ.pop("HF_HUB_OFFLINE", None)
     os.environ.pop("TRANSFORMERS_OFFLINE", None)
     Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5")
+
