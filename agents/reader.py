@@ -5,7 +5,7 @@ import uuid
 import concurrent.futures
 
 import chromadb
-from llama_index.core import VectorStoreIndex, StorageContext
+from llama_index.core import VectorStoreIndex, StorageContext, Document
 from llama_index.readers.web import SimpleWebPageReader
 from llama_index.vector_stores.chroma import ChromaVectorStore
 from langsmith import traceable
@@ -22,30 +22,40 @@ def reader_node(state: AutoResearchState) -> AutoResearchState:
     search_results = state["search_results"]
 
     all_urls, url_set = [], set()
+    url_snippets = {}
     for results_list in search_results.values():
         for item in results_list:
             url = item.get("url", "")
-            if url and url not in url_set:
-                url_set.add(url)
-                all_urls.append(url)
+            snippet = item.get("snippet", "")
+            if url:
+                url_snippets[url] = snippet
+                if url not in url_set:
+                    url_set.add(url)
+                    all_urls.append(url)
 
     web_reader = SimpleWebPageReader()
     documents = []
     for url in all_urls:
+        fetched_docs = []
         try:
             print(f"[READER] fetching: {url}")
             executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
             future = executor.submit(web_reader.load_data, urls=[url])
             try:
-                documents.extend(future.result(timeout=15))
+                fetched_docs = future.result(timeout=10)
+                documents.extend(fetched_docs)
             except concurrent.futures.TimeoutError:
-                print(f"[READER][TIMEOUT] {url} took too long, skipping")
+                print(f"[READER][TIMEOUT] {url} took too long, using search snippet fallback")
                 future.cancel()
-                continue
             finally:
                 executor.shutdown(wait=False, cancel_futures=True)
         except Exception as e:
             print(f"[READER][FAILED] {url} — {e}")
+
+        # Fallback to Tavily search snippet if web page fetching yielded no docs
+        if not fetched_docs and url_snippets.get(url):
+            print(f"[READER][FALLBACK] using search snippet for: {url}")
+            documents.append(Document(text=url_snippets[url], metadata={"url": url}))
 
     if not documents:
         new_state = dict(state)
