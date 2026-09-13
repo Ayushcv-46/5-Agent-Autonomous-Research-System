@@ -104,8 +104,12 @@ python tests/run_e2e_topics.py --limit 5                # smoke test, real API c
 python tests/run_e2e_topics.py                           # full 20-topic end-to-end run
 ```
 
+## Recent improvements
+
+- **Async Concurrency**: Searcher and Reader agents now fetch queries and URLs concurrently using `asyncio.gather` + `asyncio.to_thread` instead of sequential blocking loops, significantly cutting per-topic latency.
+
 ## What I'd improve next
 
-- Reader Agent fetches URLs sequentially — parallelizing with `asyncio.gather()` would meaningfully cut per-topic latency
 - No persistent storage — every run's index and history live only in the Streamlit session
 - RAGAS uses the generated answer as a proxy reference (no human-labeled ground truth), which makes `context_precision`/`context_recall` self-consistency metrics rather than true accuracy measures
+

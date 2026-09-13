@@ -2,7 +2,7 @@
 # Reader Agent — extracts grounded answers via LlamaIndex + ChromaDB.
 
 import uuid
-import concurrent.futures
+import asyncio
 
 import chromadb
 from llama_index.core import VectorStoreIndex, StorageContext, Document
@@ -35,25 +35,34 @@ def reader_node(state: AutoResearchState) -> AutoResearchState:
 
     web_reader = SimpleWebPageReader()
     documents = []
-    for url in all_urls:
-        fetched_docs = []
+
+    async def fetch_url(url: str):
         try:
             print(f"[READER] fetching: {url}")
-            executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-            future = executor.submit(web_reader.load_data, urls=[url])
-            try:
-                fetched_docs = future.result(timeout=10)
-                documents.extend(fetched_docs)
-            except concurrent.futures.TimeoutError:
-                print(f"[READER][TIMEOUT] {url} took too long, using search snippet fallback")
-                future.cancel()
-            finally:
-                executor.shutdown(wait=False, cancel_futures=True)
+            fetched_docs = await asyncio.wait_for(
+                asyncio.to_thread(web_reader.load_data, urls=[url]),
+                timeout=15
+            )
+            return url, fetched_docs or []
+        except asyncio.TimeoutError:
+            print(f"[READER][TIMEOUT] {url} took too long, using search snippet fallback")
         except Exception as e:
             print(f"[READER][FAILED] {url} — {e}")
+        return url, []
+
+    async def run_readers():
+        tasks = [fetch_url(url) for url in all_urls]
+        return await asyncio.gather(*tasks)
+
+    results = asyncio.run(run_readers())
+
+    for url, fetched_docs in results:
+        if fetched_docs:
+            documents.extend(fetched_docs)
+            continue
 
         # Fallback to Tavily search snippet if web page fetching yielded no docs
-        if not fetched_docs and url_snippets.get(url):
+        if url_snippets.get(url):
             print(f"[READER][FALLBACK] using search snippet for: {url}")
             documents.append(Document(text=url_snippets[url], metadata={"url": url}))
 
