@@ -11,7 +11,7 @@ venv/
 *.egg-info/
 
 # Test artifacts
-tests/e2e_report_*.json
+testers/e2e_report_*.json
 .pytest_cache/
 
 # IDE
