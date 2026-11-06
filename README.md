@@ -1,111 +1,131 @@
 # AutoResearch
 
-A five-agent autonomous research pipeline that takes a topic, plans sub-questions, searches the web, reads and grounds evidence via RAG, drafts a report, and self-corrects through an LLM-as-judge feedback loop — with RAGAS evaluation on retrieval quality.
-
-Built as a hands-on project to learn agentic AI system design: LangGraph state machines, RAG over live web content, structured LLM output, and self-correcting agent loops.
+AutoResearch is a Streamlit research assistant built around five agents. It plans sub-questions, searches the web with Tavily, retrieves evidence with dense and BM25 search, drafts a cited report, and asks a critic to review it.
 
 ## What it does
 
-You give AutoResearch a topic. It:
+1. **Planner:** creates three research questions. If planning fails, a deterministic fallback plan is used.
+2. **Searcher:** searches those questions concurrently, with a configurable concurrency limit.
+3. **Reader:** fetches result pages concurrently, falls back to Tavily snippets, chunks the text explicitly, and fuses Chroma vector retrieval with BM25 using Reciprocal Rank Fusion (RRF).
+4. **Writer:** drafts one finding per question and cites only sources retrieved for that question.
+5. **Critic:** scores grounding, completeness, and clarity and can request up to two revisions.
 
-1. **Plans** — breaks the topic into 3 focused sub-questions
-2. **Searches** — queries the web for each sub-question via Tavily
-3. **Reads** — builds an ephemeral vector index over the retrieved pages and extracts grounded, cited answers per sub-question
-4. **Writes** — drafts a structured report (introduction, per-sub-question findings with citations, conclusion) from *only* the evidence gathered — with explicit anti-hallucination constraints in the prompt
-5. **Critiques** — an LLM-as-judge scores the draft 1-10 on grounding, completeness, and clarity, and returns a PASS/REVISE verdict
-6. If REVISE, the Writer gets the specific issues and rewrites — capped at 2 revision cycles to guarantee termination
+The app displays a local agent trace and a runtime breakdown for planner, search, page fetching, indexing, retrieval, RAGAS, writing, and critique. The Reader's RRF ranks keyword and vector results together; see the [RRF paper](https://research.google/pubs/reciprocal-rank-fusion-outperforms-condorcet-and-individual-rank-learning-methods/).
 
-Retrieval quality is independently measured with **RAGAS** (faithfulness, answer relevancy, context precision, context recall) — not just self-reported by the pipeline's own Critic.
+## Quality evaluation
 
-## Architecture
+The interactive RAGAS scores are diagnostics, not ground truth. Faithfulness and answer relevancy are LLM-judge estimates. Context precision and context recall use the generated answer as a proxy reference, so the UI labels them as proxy scores.
 
-```mermaid
-flowchart TD
-    A[Research topic] --> B[Planner agent<br/>3 sub-questions]
-    B --> C[Search agent<br/>Tavily, top 3 results each]
-    C --> D[Reader agent<br/>LlamaIndex RAG + RAGAS eval]
-    D --> E[Writer agent<br/>Drafts grounded report]
-    E --> F[Critic agent<br/>Score 1-10, verdict]
-    F -->|PASS| G[Final report]
-    F -->|REVISE, max 2x| E
+For a separate reference-based comparison, evaluation/golden_set.json contains five fixed questions, human-written expected answers, and authoritative source URLs. Run:
 
-    style A fill:#f1efe8,stroke:#5f5e5a
-    style G fill:#f1efe8,stroke:#5f5e5a
-    style B fill:#eeedfe,stroke:#534ab7
-    style C fill:#eeedfe,stroke:#534ab7
-    style D fill:#eeedfe,stroke:#534ab7
-    style E fill:#e1f5ee,stroke:#0f6e56
-    style F fill:#faece7,stroke:#993c1d
-```
+~~~powershell
+python evaluation/run_golden_eval.py
+~~~
 
-Two failure paths (omitted above for clarity, see `graph/routing.py`): if the Reader can't retrieve any content, the pipeline short-circuits to a "insufficient evidence" report instead of hallucinating; if the Writer's LLM backend fails after 5 retries, it returns a clear failure message instead of an empty report.
+This runs Tavily search and Reader retrieval for each question, then evaluates the answers against the curated references with RAGAS. It also reports whether retrieved sources cover the expected source domains. This makes live API calls and can take several minutes. To check retrieval and expected-source coverage without RAGAS:
 
-## Tech stack
+~~~powershell
+python evaluation/run_golden_eval.py --limit 1 --skip-ragas
+~~~
 
-| Layer | Choice |
-|---|---|
-| Agent orchestration | LangGraph (StateGraph, conditional edges) |
-| LLM inference | NVIDIA API (`openai/gpt-oss-120b`) via `langchain-openai` |
-| Structured output | Pydantic + `.with_structured_output()` |
-| Web search | Tavily API |
-| RAG | LlamaIndex + ChromaDB (ephemeral, per-session index) |
-| Embeddings | HuggingFace `BAAI/bge-small-en-v1.5` (local, offline) |
-| Evaluation | RAGAS (faithfulness, answer relevancy, context precision, context recall) |
-| Observability | LangSmith tracing |
-| UI | Streamlit |
+Results are written to evaluation/results/, which is ignored by Git. The five-case set is a small regression benchmark; expand it with cases from your own research domains before treating its average as a broad quality score.
 
-## Example output
+## Requirements
 
-> **Topic:** "How do vector databases handle approximate nearest neighbor search?"
->
-> **Result:** Quality score 8/10, 1 revision, 9 sources cited, RAGAS faithfulness 0.9+
->
-> The report covers indexing structures (HNSW/IVF/PQ), the accuracy-vs-latency tradeoff via tunable parameters, and hardware acceleration — each finding traced back to a specific source URL, with the Critic flagging and the Writer fixing an under-cited claim on the first pass.
+- Python 3.13
+- Google AI Studio API key for Gemini
+- Tavily API key for web search
+- Optional LangSmith API key for hosted tracing
 
-*(Swap this for a real sample from your own run — a short excerpt plus the quality/RAGAS scores is more convincing than a full report dump.)*
+requirements.in lists the pinned direct dependencies. requirements.txt is the generated lock containing pinned transitive dependencies as well. If you intentionally update dependencies, regenerate the lock with:
+
+~~~powershell
+pip install pip-tools
+pip-compile --upgrade requirements.in --output-file requirements.txt
+~~~
+
+## Run locally on Windows
+
+From the repository root:
+
+~~~powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+Copy-Item .env.example .env
+notepad .env
+streamlit run app.py
+~~~
+
+Set GOOGLE_API_KEY and TAVILY_API_KEY in .env. For hosted tracing, set LANGSMITH_TRACING=true, LANGSMITH_PROJECT=AutoResearch, and LANGSMITH_API_KEY. The app's sidebar links to LangSmith. The in-page Agent Trace is local to the Streamlit session.
+
+Concurrency, chunking, and retrieval settings can be adjusted in .env:
+
+| Variable | Default | Purpose |
+|---|---:|---|
+| SEARCH_CONCURRENCY | 3 | Concurrent Tavily requests |
+| FETCH_CONCURRENCY | 6 | Concurrent page fetches |
+| FETCH_TIMEOUT_SECONDS | 12 | Timeout for each page |
+| CHUNK_SIZE | 800 | SentenceSplitter chunk size |
+| CHUNK_OVERLAP | 120 | Chunk overlap |
+| RETRIEVAL_TOP_K | 6 | Candidates from each retrieval method and final RRF list |
+| RRF_K | 60 | RRF rank smoothing constant |
+
+## Run with Docker
+
+Install and start Docker Desktop, then create .env from .env.example and enter your API keys. From the repository root run:
+
+~~~powershell
+Copy-Item .env.example .env
+notepad .env
+docker compose up --build
+~~~
+
+Open [http://localhost:8501](http://localhost:8501). Stop the app with Ctrl+C, then remove the container with:
+
+~~~powershell
+docker compose down
+~~~
+
+The Hugging Face embedding model downloads the first time the container starts. Docker Compose keeps its cache in a named volume so later starts can reuse it. API keys are passed at runtime through .env; .env is excluded from the image build context and must never be committed.
 
 ## Project structure
 
-```
-day_24/
-├── app.py                 # Streamlit entry point
-├── config/                # env loading, constants
-├── clients/                # LLM + Tavily clients
-├── schemas/                # Pydantic models, LangGraph state
-├── agents/                 # Planner, Searcher, Reader, Writer, Critic
-├── graph/                  # routing logic + build_graph()
-├── evaluation/              # RAGAS evaluation
-├── ui/                      # Streamlit components
-└── tests/
-    ├── test_routing.py      # fast, no API calls
-    ├── test_helpers.py      # fast, no API calls
-    └── run_e2e_topics.py    # real end-to-end run across 20 topics
-```
+~~~
+app.py                         Streamlit entry point
+agents/                        Planner, Searcher, Reader, Writer, Critic
+clients/                       Gemini and Tavily clients
+config/                        Environment settings and runtime constants
+evaluation/
+  golden_set.json              Human-referenced benchmark cases
+  run_golden_eval.py           Reference-based benchmark runner
+  ragas_eval.py                Interactive RAGAS diagnostics
+graph/                         LangGraph builder, routing, terminal nodes
+schemas/                       Typed state and Pydantic outputs
+testers/
+  test_routing.py              Fast routing tests
+  test_helper.py               Fast helper tests
+  run_e2e_topics.py            Live API end-to-end topic runner
+ui/                            Streamlit views and components
+requirements.in                Pinned direct dependencies
+requirements.txt               Fully pinned dependency lock
+Dockerfile
+compose.yaml
+~~~
 
-## Running it
+## Checks
 
-```bash
-git clone https://github.com/<your-username>/autoResearch-agent.git
-cd autoResearch-agent/day_24
-python -m venv .venv
-.venv\Scripts\activate          # Windows
-pip install -r requirements.txt --break-system-packages
-cp .env.example .env            # fill in your API keys
-streamlit run app.py
-```
+~~~powershell
+python -m pytest testers/test_routing.py testers/test_helper.py -v
+python testers/run_e2e_topics.py --limit 1 --no-ragas
+python evaluation/run_golden_eval.py --limit 1
+~~~
 
-Requires API keys for NVIDIA (LLM inference), Tavily (web search), and optionally LangSmith (tracing).
+The first command uses no model or search API calls. The latter two use live services and may incur API usage.
 
-## Testing
+## Known limitations
 
-```bash
-pytest tests/test_routing.py tests/test_helpers.py -v   # unit tests, free, instant
-python tests/run_e2e_topics.py --limit 5                # smoke test, real API calls
-python tests/run_e2e_topics.py                           # full 20-topic end-to-end run
-```
-
-## What I'd improve next
-
-- Reader Agent fetches URLs sequentially — parallelizing with `asyncio.gather()` would meaningfully cut per-topic latency
-- No persistent storage — every run's index and history live only in the Streamlit session
-- RAGAS uses the generated answer as a proxy reference (no human-labeled ground truth), which makes `context_precision`/`context_recall` self-consistency metrics rather than true accuracy measures
+- The Chroma index is ephemeral for each run; report history is held in the Streamlit session.
+- Live RAGAS proxy metrics are not a substitute for independently labeled references.
+- The golden benchmark is intentionally small and should grow with reviewed examples from the intended research domains.

@@ -1,0 +1,15 @@
+services:
+  autoresearch:
+    build:
+      context: .
+    env_file:
+      - .env
+    ports:
+      - "8501:8501"
+    volumes:
+      - huggingface-cache:/home/app/.cache/huggingface
+    init: true
+    restart: unless-stopped
+
+volumes:
+  huggingface-cache:

@@ -1,0 +1,21 @@
+# Direct runtime dependencies. Generate the fully pinned lock with:
+#   pip-compile --no-upgrade requirements.in --output-file requirements.txt
+chromadb==1.5.9
+datasets==5.0.0
+beautifulsoup4==4.15.0
+httpx==0.28.1
+langchain-huggingface==1.2.2
+langchain-google-genai==4.4.3
+langgraph==1.2.9
+langsmith==0.14.17
+llama-index-core==0.14.23
+pydantic==2.13.4
+python-dotenv==1.2.2
+ragas==0.4.3
+streamlit==1.55.0
+tavily-python==0.7.26
+llama-index-llms-google-genai==0.11.3
+llama-index-embeddings-huggingface==0.7.0
+llama-index-vector-stores-chroma==0.5.5
+llama-index-retrievers-bm25==0.8.0
+langchain-community==0.3.31
