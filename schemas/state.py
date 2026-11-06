@@ -20,3 +20,7 @@ class AutoResearchState(TypedDict, total=False):
     final_report: str
     run_ragas: bool                       # NEW: user toggle carried in state
     ragas_scores: Optional[Dict[str, Any]]  # NEW: metric results
+    stage_timings: Dict[str, float]
+    input_error: Optional[str]
+    planner_fallback_used: bool
+    citation_warnings: List[str]

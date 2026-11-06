@@ -7,12 +7,16 @@ from schemas.state import AutoResearchState
 from config.settings import MAX_REVISIONS
 
 
+def route_after_planner(state: AutoResearchState) -> Literal["input_error", "continue"]:
+    return "input_error" if state.get("input_error") else "continue"
+
+
 def should_revise(state: AutoResearchState) -> Literal["revise", "pass"]:
     critique = state.get("critique")
     revision_count = state.get("revision_count", 0)
     if critique is None:
         return "pass"
-    if critique["verdict"] == "REVISE" and revision_count < MAX_REVISIONS:
+    if critique.get("verdict") == "REVISE" and revision_count < MAX_REVISIONS:
         return "revise"
     return "pass"
 
