@@ -5,7 +5,7 @@ from typing import Dict, Any, Optional
 
 import streamlit as st
 
-from evaluation.ragas_eval import RAGAS_METRIC_NAMES
+from evaluation.ragas_eval import RAGAS_METRIC_LABELS, RAGAS_METRIC_NAMES
 from utils.helpers import safe_filename_from
 
 
@@ -27,13 +27,21 @@ def render_ragas_metrics(ragas_scores: Optional[Dict[str, Any]]):
     if "error" in ragas_scores:
         st.caption(f"RAGAS evaluation unavailable: {ragas_scores['error']}")
         return
-    st.caption("RAGAS — Reader Agent retrieval quality (0.0 – 1.0)")
+    st.caption(
+        "RAGAS uses an LLM judge. Context precision and recall are proxy scores "
+        "because the live run has no human reference answer."
+    )
     cols = st.columns(4)
     for i, name in enumerate(RAGAS_METRIC_NAMES):
         val = ragas_scores.get(name)
         cols[i].metric(
-            label=name.replace("_", " ").title(),
+            label=RAGAS_METRIC_LABELS[name],
             value=f"{val:.2f}" if val is not None else "—",
+            help=(
+                "Self-consistency proxy using the generated answer as its reference."
+                if name in {"context_precision", "context_recall"}
+                else "Estimate from an LLM judge; compare it with a labeled benchmark."
+            ),
         )
 
 def render_assistant_extras(entry: Dict[str, Any], key_prefix: str):
@@ -43,6 +51,8 @@ def render_assistant_extras(entry: Dict[str, Any], key_prefix: str):
     sources = entry.get("sources", [])
     report = entry.get("content", "")
     topic = entry.get("topic", "report")
+    timings = entry.get("stage_timings") or {}
+    citation_warnings = entry.get("citation_warnings") or []
 
     if score is not None:
         col1, col2 = st.columns([1, 3])
@@ -55,6 +65,19 @@ def render_assistant_extras(entry: Dict[str, Any], key_prefix: str):
                 st.caption("Passed on the first draft — no revisions needed.")
 
     render_ragas_metrics(entry.get("ragas_scores"))   # NEW DAY 23
+
+    if timings:
+        with st.expander("Runtime breakdown"):
+            st.caption("Reader substeps are included within the Reader Agent total.")
+            for name, seconds in timings.items():
+                if isinstance(seconds, (int, float)):
+                    label = name.removesuffix("_seconds").replace("_", " ").title()
+                    st.write(f"**{label}:** {seconds:.2f}s")
+
+    if citation_warnings:
+        with st.expander(f"Citation checks ({len(citation_warnings)} adjustment(s))"):
+            for warning in citation_warnings:
+                st.markdown(f"- {warning}")
 
     if sources:
         with st.expander(f"Sources ({len(sources)})"):

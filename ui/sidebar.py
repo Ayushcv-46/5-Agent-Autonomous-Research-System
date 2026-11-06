@@ -3,7 +3,8 @@
 
 import streamlit as st
 
-from evaluation.ragas_eval import RAGAS_AVAILABLE, RAGAS_METRIC_NAMES
+from evaluation.ragas_eval import RAGAS_AVAILABLE, RAGAS_METRIC_LABELS, RAGAS_METRIC_NAMES
+from config.settings import LANGSMITH_CONFIGURED, LANGSMITH_PROJECT_NAME
 from utils.helpers import safe_filename_from
 
 
@@ -11,6 +12,11 @@ def render_sidebar():
     """Render the sidebar and return (run_ragas_toggle, RAGAS_AVAILABLE)."""
     with st.sidebar:
         st.header("Settings")
+        if LANGSMITH_CONFIGURED:
+            st.caption(f"LangSmith tracing is enabled · project: {LANGSMITH_PROJECT_NAME}")
+            st.link_button("Open LangSmith traces", "https://smith.langchain.com/projects")
+        else:
+            st.caption("LangSmith tracing is off or no LangSmith API key is configured.")
         # NEW DAY 23: RAGAS adds 1-3 minutes per run, so it's opt-out-able.
         run_ragas_toggle = st.toggle(
             "Run RAGAS evaluation",
@@ -37,8 +43,10 @@ def render_sidebar():
                         parts = []
                         for name in RAGAS_METRIC_NAMES:
                             v = r.get(name)
-                            parts.append(f"{name.replace('_', ' ')}: {v:.2f}" if v is not None else f"{name}: —")
+                            label = RAGAS_METRIC_LABELS[name]
+                            parts.append(f"{label}: {v:.2f}" if v is not None else f"{label}: —")
                         st.caption("RAGAS — " + "  |  ".join(parts))
+                        st.caption("Context precision/recall are proxy scores without human references.")
                     st.markdown(record["report"])
                     if record.get("sources"):
                         st.caption(f"{len(record['sources'])} source(s) cited.")

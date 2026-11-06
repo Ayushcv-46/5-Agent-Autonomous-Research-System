@@ -38,6 +38,12 @@ except ImportError as _e:
           f'Run: pip install ragas datasets langchain-huggingface "langchain-community<0.4"')
 
 RAGAS_METRIC_NAMES = ["faithfulness", "answer_relevancy", "context_precision", "context_recall"]
+RAGAS_METRIC_LABELS = {
+    "faithfulness": "Faithfulness · judge estimate",
+    "answer_relevancy": "Answer relevancy · judge estimate",
+    "context_precision": "Context precision · proxy",
+    "context_recall": "Context recall · proxy",
+}
 
 # ---------- RAGAS wrappers (built once, lazily) ----------
 _ragas_llm_wrapper = None
@@ -59,11 +65,11 @@ def get_ragas_wrappers():
 def run_ragas_evaluation(extracted_points: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     """Score Reader output with RAGAS.
 
-    Ground-truth note: AutoResearch is autonomous, so we have no human
-    reference answers. We use the generated answer as a PROXY reference,
-    which makes context_precision / context_recall self-consistency
-    metrics. faithfulness and answer_relevancy need no ground truth and
-    are the headline numbers.
+    This live-run score has no human reference answer. The generated answer
+    is used as a proxy reference for context_precision/context_recall, so
+    those two numbers measure self-consistency, not independent correctness.
+    Faithfulness and answer_relevancy are LLM-judge estimates, not benchmark
+    truth. Use evaluation/run_golden_eval.py for reference-based metrics.
     """
     if not RAGAS_AVAILABLE:
         return {"error": "ragas not installed"}
@@ -117,6 +123,8 @@ def run_ragas_evaluation(extracted_points: List[Dict[str, Any]]) -> Optional[Dic
                 clean_scores.append(numeric_value)
             scores[name] = round(sum(clean_scores) / len(clean_scores), 3) if clean_scores else None
         print(f"[RAGAS] scores: {scores}")
+        scores["reference_type"] = "generated_answer_proxy"
+        scores["proxy_metrics"] = ["context_precision", "context_recall"]
         return scores
     except Exception as e:
         import traceback
