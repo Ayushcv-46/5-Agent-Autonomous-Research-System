@@ -1,0 +1,42 @@
+[
+  {
+    "id": "http_429",
+    "question": "According to RFC 6585, what does HTTP 429 mean and what retry guidance may the response include?",
+    "expected_answer": "HTTP 429 means the client has sent too many requests in a given amount of time. The response should explain the condition and may include a Retry-After header telling the client how long to wait before retrying.",
+    "source_urls": [
+      "https://www.rfc-editor.org/rfc/rfc6585.html"
+    ]
+  },
+  {
+    "id": "http_503",
+    "question": "According to RFC 9110, when is HTTP 503 used and what retry guidance can a server provide?",
+    "expected_answer": "HTTP 503 indicates that a server is temporarily unable to handle a request, for example because of overload or scheduled maintenance. The server may send Retry-After to suggest when the client should retry.",
+    "source_urls": [
+      "https://www.rfc-editor.org/rfc/rfc9110.html"
+    ]
+  },
+  {
+    "id": "bm25",
+    "question": "How does Okapi BM25 use query-term frequency and document length when ranking documents?",
+    "expected_answer": "BM25 weights query terms using inverse document frequency and term frequency. Its term-frequency contribution saturates rather than growing without bound, and document length normalization adjusts scores for unusually long or short documents; parameters such as k1 and b control these effects.",
+    "source_urls": [
+      "https://nlp.stanford.edu/IR-book/html/htmledition/okapi-bm25-a-non-binary-model-1.html"
+    ]
+  },
+  {
+    "id": "rrf",
+    "question": "How does Reciprocal Rank Fusion combine results from multiple ranked lists?",
+    "expected_answer": "Reciprocal Rank Fusion gives each document a score equal to the sum of 1 divided by a constant plus its rank in each list where it appears. It combines rank positions and does not require the systems' raw relevance scores to share a scale.",
+    "source_urls": [
+      "https://research.google/pubs/reciprocal-rank-fusion-outperforms-condorcet-and-individual-rank-learning-methods/"
+    ]
+  },
+  {
+    "id": "hnsw",
+    "question": "What is the main idea behind HNSW approximate nearest-neighbor search?",
+    "expected_answer": "HNSW builds a hierarchy of proximity graphs over nested subsets of vectors. Search starts in a sparse upper layer and navigates toward closer candidates while descending through layers, producing an approximate nearest-neighbor result efficiently.",
+    "source_urls": [
+      "https://arxiv.org/abs/1603.09320"
+    ]
+  }
+]
