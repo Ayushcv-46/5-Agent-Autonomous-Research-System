@@ -1,7 +1,12 @@
 # clients/search_client.py
-# Tavily search client.
+# Factory for independent Tavily clients used by concurrent search workers.
 
 import os
+
 from tavily import TavilyClient
 
-tavily_client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
+from config import settings as _settings  # noqa: F401
+
+
+def create_tavily_client() -> TavilyClient:
+    return TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
